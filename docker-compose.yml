@@ -1,0 +1,309 @@
+version: "3.4"
+
+services:
+  jackett:
+    restart: always
+    image: lscr.io/linuxserver/jackett
+    container_name: jackett
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - MONO_TLS_PROVIDER=btls
+      - AUTO_UPDATE=true
+    volumes:
+      - ${DVOL}/downloads:/downloads
+      - ${CVOL}/jackett:/config
+    ports:
+      - 9117:9117
+
+  sonarr:
+    restart: always
+    image: linuxserver/sonarr
+    container_name: sonarr
+    volumes:
+     - ${DVOL}/tv:/tv
+     - ${DVOL}/downloads:/downloads
+     - ${CVOL}/sonarr:/config
+    expose:
+       - 8989
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - MONO_TLS_PROVIDER=btls
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sonarr.rule=Host(`CHANGE ME`)"
+      - "traefik.http.routers.sonarr.entrypoints=websecure"
+      - "traefik.http.routers.sonarr.tls.certresolver=myresolver"
+      - "traefik.http.routers.sonarr.middlewares=authelia@docker"
+      
+  radarr:
+    restart: always
+    image: linuxserver/radarr
+    container_name: radarr
+    volumes:
+     - ${DVOL}/movies:/movies
+     - ${DVOL}/downloads:/downloads
+     - ${CVOL}/radarr:/config
+    expose:
+       - 7878
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.radarr.rule=Host(`CHANGE ME`)"
+      - "traefik.http.routers.radarr.entrypoints=websecure"
+      - "traefik.http.routers.radarr.tls.certresolver=myresolver"
+      - "traefik.http.routers.radarr.middlewares=authelia@docker"
+
+  sabnzbd:
+    restart: always
+    image: linuxserver/sabnzbd
+    container_name: sabnzbd
+    volumes:
+     - ${DVOL}/incomplete:/incomplete-downloads
+     - ${DVOL}/downloads:/downloads
+     - ${CVOL}/sabnzbd:/config
+    expose:
+       - 8080
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sabnzbd.rule=Host(`CHANGE ME`)"
+      - "traefik.http.routers.sabnzbd.entrypoints=websecure"
+      - "traefik.http.routers.sabnzbd.tls.certresolver=myresolver"
+      - "traefik.http.routers.sabnzbd.middlewares=authelia@docker"
+ 
+  transmission:
+    restart: always
+    image: linuxserver/transmission
+    container_name: transmission
+    volumes:
+     - ${DVOL}/incomplete:/incomplete-downloads
+     - ${DVOL}/downloads:/downloads
+     - ${CVOL}/transmission:/config
+     - ${DVOL}/watch:/watch
+    ports:
+      - "51413:51413"
+      - "51413:51413/udp"
+    expose:
+      - 9091
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.transmission.rule=Host(`CHANGE ME`)"
+      - "traefik.http.routers.transmission.entrypoints=websecure"
+      - "traefik.http.routers.transmission.tls.certresolver=myresolver"
+      - "traefik.http.routers.transmission.middlewares=authelia@docker"
+      
+  unifi:
+    restart: always
+    image: lscr.io/linuxserver/unifi-controller
+    container_name: unifi
+    volumes:
+     - ${CVOL}/unifi/:/config
+    ports:
+      - "3478:3478/udp"
+      - "10001:10001/udp"
+      - "8080:8080"
+      - "8081:8081"
+      - "8443:8443"
+      - "8843:8843"
+      - "8880:8880"
+      - "6789:6789"
+      - "5514:5514/udp"
+      - "1900:1900/udp"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.unifi.tls=true"
+      - "traefik.http.routers.unifi.rule=Host(`CHANGE ME`)"
+      - "traefik.http.routers.unifi.entrypoints=websecure"
+      - "traefik.http.routers.unifi.tls.certresolver=myresolver"
+      - "traefik.http.services.unifi.loadbalancer.server.port=8443"
+      - "traefik.http.services.unifi.loadbalancer.server.scheme=https"
+
+  portainer:
+    restart: always
+    image: portainer/portainer
+    container_name: portainer
+    volumes: 
+      - ${CVOL}/portainer:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    expose:
+       - 9000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(`CHANGE ME`)"
+      - "traefik.http.routers.portainer.entrypoints=websecure"
+      - "traefik.http.routers.portainer.tls.certresolver=myresolver"
+      - "traefik.http.routers.portainer.middlewares=authelia@docker"
+  
+  plex:
+    restart: always
+    image: linuxserver/plex
+    container_name: plex
+    volumes:
+     - ${DVOL}/movies:/data/movies
+     - ${DVOL}/tv:/data/tv
+     - ${DVOL}/tv-qc:/data/tv-qc
+     - ${DVOL}/downloads:/downloads
+     - ${CVOL}/plex:/config
+     - ${DVOL}/transcode:/transcode
+    network_mode: "host"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - VERSION=latest
+
+  duckdns:
+    restart: unless-stopped
+    container_name: duckdns
+    image: linuxserver/duckdns
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - SUBDOMAINS=CHANGE ME
+      - TOKEN=CHANGE ME
+      - LOG_FILE=false
+    volumes:
+      - ${CVOL}/duckdns:/config
+
+  hass:
+    restart: unless-stopped
+    container_name: hass
+    image: lscr.io/linuxserver/homeassistant
+    expose:
+      - 8123
+    environment:
+      - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
+    privileged: true
+    volumes:
+      - ${CVOL}/hass:/config
+    network_mode: host
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.hass.rule=Host(`CHANGE ME`)"
+      - "traefik.http.services.hass.loadbalancer.server.port=8123"
+      - "traefik.http.routers.hass.entrypoints=websecure"
+      - "traefik.http.routers.hass.tls.certresolver=myresolver"
+
+  pihole:
+    restart: unless-stopped
+    container_name: pihole
+    image: pihole/pihole
+    shm_size: '2gb'
+    environment:
+      - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
+    ports:
+      - 53:53
+      - 53:53/udp
+      - 8084:80
+    volumes:
+      - ${CVOL}/pihole/pihole:/etc/pihole
+      - ${CVOL}/pihole/dnsmasq:/etc/dnsmasq.d
+
+  traefik:
+    restart: unless-stopped
+    container_name: traefik
+    image: traefik:v2.6
+    ports:
+      - 443:443
+      - 8083:8080
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.websecure.address=:443"
+      - "--serverstransport.insecureskipverify"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=CHANGE ME"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    volumes:
+      - ${CVOL}/traefik/letsencrypt:/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      - "traefik.http.routers.api.middlewares=authelia@docker"
+
+    extra_hosts: 
+      - host.docker.internal:172.5.0.1
+
+  
+  authelia:
+    image: authelia/authelia
+    container_name: authelia
+    volumes:
+      - ${CVOL}/authelia:/config
+    expose:
+      - 9091
+    restart: unless-stopped
+    healthcheck:
+      disable: true
+    environment:
+      - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.authelia.rule=Host(`CHANGE ME`)"
+      - "traefik.http.routers.authelia.entrypoints=websecure"
+      - "traefik.http.routers.authelia.tls=true"
+      - "traefik.http.routers.authelia.tls.certresolver=myresolver"
+      - "traefik.http.middlewares.authelia.forwardauth.address=http://authelia:9091/api/verify?rd=https://CHANGE ME"
+      - "traefik.http.middlewares.authelia.forwardauth.trustForwardHeader=true"
+      - "traefik.http.middlewares.authelia.forwardauth.authResponseHeaders=Remote-User,Remote-Groups,Remote-Name,Remote-Email"
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    volumes:
+      - ${CVOL}/redis:/data
+    expose:
+      - 6379
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
+  mosquitto:
+    image: eclipse-mosquitto
+    container_name: mosquitto
+    volumes:
+      - ${CVOL}/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    ports:
+      - 1883:1883
+      - 9001:9001
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.5.0.1/24
+          gateway: 172.5.0.1
